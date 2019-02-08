@@ -221,6 +221,7 @@ public class Basic2OAuthProxy extends EnhancedHttpServlet {
 		if (!basicAuthHashMap.get(cred.getUsername()).equals(DigestUtils.sha1Hex(cred.getPassword()))) {
 			// check to see if the password value for the user has changed. If it has,
 			// delete the token
+			// this is not a great design, but it works... 
 			tokenMap.remove(cred.getUsername());
 			return false;
 		} else {
@@ -412,6 +413,23 @@ public class Basic2OAuthProxy extends EnhancedHttpServlet {
 		}
 		proxyRequest.setEntity(new StringEntity(buffer.toString()));
 	}
+	
+	/**
+	 * Generates a URI to call the Salesforce REST API based on the URI passed into the servlet
+	 * @param cred Basic Auth Credentials
+	 * @param request Servlet HTTP request object
+	 * @return URI for accessing the Salesforce REST API
+	 */
+	private String generateSalesforceRestURI(BasicAuthCredential cred, HttpServletRequest request) {
+		String accessToken = getAccessToken(cred);
+		String instanceURL = getInstanceURL(cred);
+		String uri = request.getRequestURI().substring(request.getContextPath().length());
+		String queryString = "";
+		if (request.getQueryString() != null) {
+			queryString = "?" + request.getQueryString();
+		}
+		return instanceURL + uri + queryString;
+	}
 
 	/**
 	 * Proxy handler for HTTP GET
@@ -432,19 +450,12 @@ public class Basic2OAuthProxy extends EnhancedHttpServlet {
 		boolean haveToken = authorize(request, response, cred);
 
 		if (haveToken) {
-			String accessToken = getAccessToken(cred);
-			String instanceURL = getInstanceURL(cred);
-			String uri = request.getRequestURI().substring(request.getContextPath().length());
-			String queryString = "";
-			if (request.getQueryString() != null) {
-				queryString = "?" + request.getQueryString();
-			}
-			String sfdcURI = instanceURL + uri + queryString;
-			BasicHeader oauthHeader = new BasicHeader("Authorization", "OAuth " + accessToken);
+			String sfdcURI = generateSalesforceRestURI(cred, request);
 			HttpClient httpClient = HttpClientBuilder.create().build();
 			HttpGet httpGet = new HttpGet(sfdcURI);
-			httpGet.addHeader(oauthHeader);
-			httpGet.addHeader(PRETTY_PRINT_HEADER);
+	
+			setProxiedRequestHeaders(request, httpGet, getAccessToken(cred));
+
 			HttpResponse proxiedResponse = httpClient.execute(httpGet);
 			int statusCode = proxiedResponse.getStatusLine().getStatusCode();
 			response.setStatus(statusCode);
@@ -478,19 +489,13 @@ public class Basic2OAuthProxy extends EnhancedHttpServlet {
 		boolean haveToken = authorize(request, response, cred);
 
 		if (haveToken) {
-			String accessToken = getAccessToken(cred);
-			String instanceURL = getInstanceURL(cred);
-			String uri = request.getRequestURI().substring(request.getContextPath().length());
-			String queryString = "";
-			if (request.getQueryString() != null) {
-				queryString = "?" + request.getQueryString();
-			}
-			String sfdcURI = instanceURL + uri + queryString;
-			BasicHeader oauthHeader = new BasicHeader("Authorization", "OAuth " + accessToken);
+			
+			String sfdcURI = generateSalesforceRestURI(cred, request);
 			HttpClient httpClient = HttpClientBuilder.create().build();
 			HttpHead httpHead = new HttpHead(sfdcURI);
-			httpHead.addHeader(oauthHeader);
-			httpHead.addHeader(PRETTY_PRINT_HEADER);
+			
+			setProxiedRequestHeaders(request, httpHead, getAccessToken(cred));
+
 			HttpResponse proxiedResponse = httpClient.execute(httpHead);
 			int statusCode = proxiedResponse.getStatusLine().getStatusCode();
 			response.setStatus(statusCode);
@@ -523,15 +528,11 @@ public class Basic2OAuthProxy extends EnhancedHttpServlet {
 		boolean haveToken = authorize(request, response, cred);
 
 		if (haveToken) {
-			String accessToken = getAccessToken(cred);
-			String instanceURL = getInstanceURL(cred);
-			String uri = request.getRequestURI().substring(request.getContextPath().length());
-
-			String sfdcURI = instanceURL + uri;
+			String sfdcURI = generateSalesforceRestURI(cred, request);
 			HttpClient httpClient = HttpClientBuilder.create().build();
 			HttpPost httpPost = new HttpPost(sfdcURI);
 
-			setProxiedRequestHeaders(request, httpPost, accessToken);
+			setProxiedRequestHeaders(request, httpPost, getAccessToken(cred));
 			setProxiedEntity(request, httpPost);
 
 			HttpResponse proxiedResponse = httpClient.execute(httpPost);
@@ -566,14 +567,11 @@ public class Basic2OAuthProxy extends EnhancedHttpServlet {
 		boolean haveToken = authorize(request, response, cred);
 
 		if (haveToken) {
-			String accessToken = getAccessToken(cred);
-			String instanceURL = getInstanceURL(cred);
-			String uri = request.getRequestURI().substring(request.getContextPath().length());
-			String sfdcURI = instanceURL + uri;
+			String sfdcURI = generateSalesforceRestURI(cred, request);
 
 			HttpClient httpClient = HttpClientBuilder.create().build();
 			HttpDelete httpDelete = new HttpDelete(sfdcURI);
-			setProxiedRequestHeaders(request, httpDelete, accessToken);
+			setProxiedRequestHeaders(request, httpDelete, getAccessToken(cred));
 
 			HttpResponse proxiedResponse = httpClient.execute(httpDelete);
 			int statusCode = proxiedResponse.getStatusLine().getStatusCode();
@@ -607,15 +605,12 @@ public class Basic2OAuthProxy extends EnhancedHttpServlet {
 		boolean haveToken = authorize(request, response, cred);
 
 		if (haveToken) {
-			String accessToken = getAccessToken(cred);
-			String instanceURL = getInstanceURL(cred);
-			String uri = request.getRequestURI().substring(request.getContextPath().length());
-			String sfdcURI = instanceURL + uri;
+			String sfdcURI = generateSalesforceRestURI(cred, request);
 
 			HttpClient httpClient = HttpClientBuilder.create().build();
 			HttpPut httpPut = new HttpPut(sfdcURI);
 
-			setProxiedRequestHeaders(request, httpPut, accessToken);
+			setProxiedRequestHeaders(request, httpPut, getAccessToken(cred));
 			setProxiedEntity(request, httpPut);
 
 			HttpResponse proxiedResponse = httpClient.execute(httpPut);
@@ -650,15 +645,12 @@ public class Basic2OAuthProxy extends EnhancedHttpServlet {
 		boolean haveToken = authorize(request, response, cred);
 
 		if (haveToken) {
-			String accessToken = getAccessToken(cred);
-			String instanceURL = getInstanceURL(cred);
-			String uri = request.getRequestURI().substring(request.getContextPath().length());
-			String sfdcURI = instanceURL + uri;
+			String sfdcURI = generateSalesforceRestURI(cred, request);
 
 			HttpClient httpClient = HttpClientBuilder.create().build();
 			HttpPatch httpPatch = new HttpPatch(sfdcURI);
 
-			setProxiedRequestHeaders(request, httpPatch, accessToken);
+			setProxiedRequestHeaders(request, httpPatch, getAccessToken(cred));
 			setProxiedEntity(request, httpPatch);
 
 			HttpResponse proxiedResponse = httpClient.execute(httpPatch);
