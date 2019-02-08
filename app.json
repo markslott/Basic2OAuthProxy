@@ -1,0 +1,21 @@
+{
+  "name": "Basic Auth to OAuth Proxy Server",
+  "description": "A simple Java servlet that will proxy requests to the Salesforce API. Allows credentials to be passed in via a Basic Authentication authorization header rather than an OAuth flow",
+  "repository": "https://github.com/markslott/BasicAuth2OAuthProxy",
+  "logo": "https://node-js-sample.herokuapp.com/node.png",
+  "keywords": ["java", "tomcat"],
+  "env" : {
+  	"CLIENT_SECRET" : {
+  		"description" : "Saleforce Connected App Client Secret"
+  	},
+  	"CLIENT_ID" : {
+  		"description" : "Salesforce Connect App Client Id"
+  	},
+  	"TOKEN_EXPIRATION_TIME_MILLISECONDS" : {
+  	    "description" : "TTL for a Salesforce access token in ms. Should be set to value less than actual timeout value in Salesforce",
+  	    "value" : 30000
+  	}
+  	
+  }
+  
+}
