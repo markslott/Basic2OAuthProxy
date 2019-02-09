@@ -213,7 +213,12 @@ public class Basic2OAuthProxy extends EnhancedHttpServlet {
 	 * @param cred Basic auth credentials
 	 * @return boolean True if the token for the user is valid, False if not
 	 */
-	private static synchronized boolean checkAccessToken(BasicAuthCredential cred) {
+	private static synchronized boolean checkAccessToken(BasicAuthCredential cred)
+			throws NoBasicAuthCredentialsException {
+		if (cred == null) {
+			throw new NoBasicAuthCredentialsException("Must provide HTTP Basic Authentication header");
+
+		}
 		String token = tokenMap.get(cred.getUsername());
 		if (token == null) {
 			return false;
@@ -221,7 +226,7 @@ public class Basic2OAuthProxy extends EnhancedHttpServlet {
 		if (!basicAuthHashMap.get(cred.getUsername()).equals(DigestUtils.sha1Hex(cred.getPassword()))) {
 			// check to see if the password value for the user has changed. If it has,
 			// delete the token
-			// this is not a great design, but it works... 
+			// this is not a great design, but it works...
 			tokenMap.remove(cred.getUsername());
 			return false;
 		} else {
@@ -274,7 +279,7 @@ public class Basic2OAuthProxy extends EnhancedHttpServlet {
 	}
 
 	/**
-	 * Prints a standard HTTP log to stdout
+	 * Prints a standard HTTP log to logger
 	 * 
 	 * @param remoteAddress
 	 * @param user
@@ -309,39 +314,48 @@ public class Basic2OAuthProxy extends EnhancedHttpServlet {
 	 */
 	private boolean authorize(HttpServletRequest request, HttpServletResponse response, BasicAuthCredential cred)
 			throws IOException {
-		boolean haveToken = true;
-		if (!checkAccessToken(cred)) {
-			try {
+
+		try {
+			if (!checkAccessToken(cred)) {
 				requestAccessToken(cred);
-			} catch (TokenResponseException e) {
-				haveToken = false;
-				response.setStatus(401);
-				response.addHeader("Content-Type", "application/json;charset=UTF-8");
-				JSONArray jsonArray = new JSONArray();
-				JSONObject jsonError = new JSONObject();
-
-				logger.error("Auth error for " + cred.getUsername());
-				logger.error(e.getDetails().getError());
-				jsonError.put("error", e.getDetails().getError());
-
-				if (e.getDetails().getErrorDescription() != null) {
-					logger.error(e.getDetails().getErrorDescription());
-					jsonError.put("description", e.getDetails().getErrorDescription());
-				}
-				if (e.getDetails().getErrorUri() != null) {
-					logger.error(e.getDetails().getErrorUri());
-					jsonError.put("uri", e.getDetails().getErrorUri());
-				}
-				jsonArray.put(jsonError);
-				response.getWriter().append(jsonArray.toString());
-				logger.error(jsonArray.toString());
-
-				printLogEntry(request.getRemoteAddr(), cred.getUsername(), "POST", TOKEN_SERVER_URL, 401,
-						jsonArray.toString().length());
-
 			}
+		} catch (TokenResponseException e) {
+			response.setStatus(401);
+			response.addHeader("Content-Type", "application/json;charset=UTF-8");
+			JSONArray jsonArray = new JSONArray();
+			JSONObject jsonError = new JSONObject();
+
+			logger.error("Auth error for " + cred.getUsername());
+			logger.error(e.getDetails().getError());
+			jsonError.put("error", e.getDetails().getError());
+
+			if (e.getDetails().getErrorDescription() != null) {
+				logger.error(e.getDetails().getErrorDescription());
+				jsonError.put("description", e.getDetails().getErrorDescription());
+			}
+			if (e.getDetails().getErrorUri() != null) {
+				logger.error(e.getDetails().getErrorUri());
+				jsonError.put("uri", e.getDetails().getErrorUri());
+			}
+			jsonArray.put(jsonError);
+			response.getWriter().append(jsonArray.toString());
+			logger.error(jsonArray.toString());
+
+			printLogEntry(request.getRemoteAddr(), cred.getUsername(), "POST", TOKEN_SERVER_URL, 401,
+					jsonArray.toString().length());
+			return false;
+
+		} catch (NoBasicAuthCredentialsException e) {
+			response.setStatus(401);
+			response.addHeader("Content-Type", "application/json;charset=UTF-8");
+			JSONArray jsonArray = new JSONArray();
+			JSONObject jsonError = new JSONObject();
+			jsonError.put("error", e.getMessage());
+			jsonArray.put(jsonError);
+			response.getWriter().append(jsonArray.toString());
+			return false;
 		}
-		return haveToken;
+		return true;
 	}
 
 	/**
@@ -413,15 +427,16 @@ public class Basic2OAuthProxy extends EnhancedHttpServlet {
 		}
 		proxyRequest.setEntity(new StringEntity(buffer.toString()));
 	}
-	
+
 	/**
-	 * Generates a URI to call the Salesforce REST API based on the URI passed into the servlet
-	 * @param cred Basic Auth Credentials
+	 * Generates a URI to call the Salesforce REST API based on the URI passed into
+	 * the servlet
+	 * 
+	 * @param cred    Basic Auth Credentials
 	 * @param request Servlet HTTP request object
 	 * @return URI for accessing the Salesforce REST API
 	 */
 	private String generateSalesforceRestURI(BasicAuthCredential cred, HttpServletRequest request) {
-		String accessToken = getAccessToken(cred);
 		String instanceURL = getInstanceURL(cred);
 		String uri = request.getRequestURI().substring(request.getContextPath().length());
 		String queryString = "";
@@ -453,7 +468,7 @@ public class Basic2OAuthProxy extends EnhancedHttpServlet {
 			String sfdcURI = generateSalesforceRestURI(cred, request);
 			HttpClient httpClient = HttpClientBuilder.create().build();
 			HttpGet httpGet = new HttpGet(sfdcURI);
-	
+
 			setProxiedRequestHeaders(request, httpGet, getAccessToken(cred));
 
 			HttpResponse proxiedResponse = httpClient.execute(httpGet);
@@ -489,11 +504,11 @@ public class Basic2OAuthProxy extends EnhancedHttpServlet {
 		boolean haveToken = authorize(request, response, cred);
 
 		if (haveToken) {
-			
+
 			String sfdcURI = generateSalesforceRestURI(cred, request);
 			HttpClient httpClient = HttpClientBuilder.create().build();
 			HttpHead httpHead = new HttpHead(sfdcURI);
-			
+
 			setProxiedRequestHeaders(request, httpHead, getAccessToken(cred));
 
 			HttpResponse proxiedResponse = httpClient.execute(httpHead);
