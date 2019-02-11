@@ -13,7 +13,7 @@ Recommend using Eclipse IDE and cloning this repo into a workspace. Works well l
 Be sure to set the environment variables listed in the Documentation section below
 
 ```sh
-$ git clone 
+$ git clone https://github.com/markslott/Basic2OAuthProxy.git
 $ mvn install
 ```
 the .war file will be in the ./target directory
@@ -27,7 +27,7 @@ just use whatever deploy process you want from there...
 or if you prefer it the manual way:
 
 ```sh
-$ git clone 
+$ git clone https://github.com/markslott/Basic2OAuthProxy.git
 $ heroku create
 $ heroku config:set CLIENT_ID=<your Salesforce connected app client ID>
 $ heroku config:set CLIENT_SECRET=<your Salesforce connected app client secret>
