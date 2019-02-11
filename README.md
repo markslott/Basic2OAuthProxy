@@ -10,7 +10,15 @@ with OAuth, but can manage HTTP Basic Auth.
 ## Running Locally
 
 Recommend using Eclipse IDE and cloning this repo into a workspace. Works well locally on a Tomcat 9 server.
-Be sure to set the environment variables listed below
+Be sure to set the environment variables listed in the Documentation section below
+
+```sh
+$ git clone 
+$ mvn install
+```
+the .war file will be in the ./target directory
+just use whatever deploy process you want from there...
+
 
 ## Deploying to Heroku
 
@@ -26,6 +34,8 @@ $ heroku config:set CLIENT_SECRET=<your Salesforce connected app client secret>
 $ heroku config:set TOKEN_EXPIRATION_TIME_MILLISECONDS=30000
 $ git push heroku master
 ```
+
+Note: On heroku, the servlet root URI is '/'. On any other app server, the servlet root will be what is specified in the web.xml
 
 ## Documentation
 
@@ -46,7 +56,6 @@ https://your-instance.herokuapp.com/services/data/v45.0
 
 You will need to include your user credentials in an HTTP Basic Auth header. The proxy servlet will deal with converting those credentials into an OAuth request.
 Also, set the content-type header to application/json, just like you would when using the Salesforce REST API.
-
 
 
 

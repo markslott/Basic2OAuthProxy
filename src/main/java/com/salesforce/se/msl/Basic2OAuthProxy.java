@@ -73,6 +73,8 @@ import com.google.api.client.auth.oauth2.TokenResponseException;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
+import com.salesforce.se.msl.BasicAuthCredential;
+import com.salesforce.se.msl.NoBasicAuthCredentialsException;
 
 /**
  * *
